@@ -5,7 +5,7 @@ offering a synchronous client with typed request/response models covering
 every endpoint in the official `openapi.json` spec.
 
 This is a Ruby port of the Python
-[`smartbill-rest-sdk`](https://github.com/dnutiu/smartbill-sdk).
+[`smartbill-rest-sdk`](https://github.com/dnutiu/Smart-Bill-SDK).
 
 ## Features
 
