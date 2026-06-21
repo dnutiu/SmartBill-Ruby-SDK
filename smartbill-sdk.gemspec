@@ -6,13 +6,13 @@ Gem::Specification.new do |spec|
   spec.name = "smartbill-sdk"
   spec.version = Smartbill::Sdk::VERSION
   spec.authors = ["Denis Nutiu"]
-  spec.email = ["dnutiu@hey.com"]
+  spec.email = ["dnutiu@nuculabs.dev"]
 
   spec.summary = "Ruby SDK for the SmartBill Cloud REST API."
   spec.description = "A Ruby SDK for the SmartBill Cloud REST API, offering a synchronous " \
                      "client with typed request/response models for invoices, proformas, " \
                      "payments, e-mail, taxes, series and stocks."
-  spec.homepage = "https://github.com/dnutiu/smartbill-sdk-ruby"
+  spec.homepage = "https://github.com/dnutiu/SmartBill-Ruby-SDK"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.2.0"
   spec.metadata["allowed_push_host"] = "https://rubygems.org"
