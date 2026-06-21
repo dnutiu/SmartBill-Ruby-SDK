@@ -36,6 +36,7 @@ lib/smartbill/sdk/models/
 lib/smartbill/sdk/services.rb      # InvoicesService, EstimatesService, PaymentsService, EmailService, ConfigurationService, StocksService
 test/                             # minitest + WebMock suite (60 tests)
 examples/                         # standalone runnable Ruby scripts
+skills/                           # pi agent skills (SKILL.md per API area)
 sig/smartbill/sdk.rbs             # RBS signature stub (not yet filled in)
 ```
 
@@ -104,4 +105,7 @@ sig/smartbill/sdk.rbs             # RBS signature stub (not yet filled in)
     Ruby 3.4+, so it is declared in the gemspec.
 *   **Port origin**: this codebase was ported from the Python
     `smartbill-rest-sdk`; behavior, models and endpoint coverage match.
+*   **Agent skills**: `skills/` ships three pi `SKILL.md` files
+    (`smartbill-invoices`, `smartbill-payments`, `smartbill-email`) that
+    teach coding agents how to use the SDK, with Ruby code snippets.
 *   No other context files (`.cursorrules`, `CLAUDE.md`, etc.) exist.
