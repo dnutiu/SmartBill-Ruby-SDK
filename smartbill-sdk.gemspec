@@ -37,6 +37,10 @@ Gem::Specification.new do |spec|
   # Runtime dependencies
   spec.add_dependency "base64", "~> 0.2"
   spec.add_dependency "zeitwerk", "~> 2.6"
+  spec.add_dependency "dry-types", "~> 1.7"
+  spec.add_dependency "dry-struct", "~> 1.6"
+  spec.add_dependency "dry-validation", "~> 1.10"
+  spec.add_dependency "dry-inflector", "~> 1.0"
 
   # Development / test dependencies live in the Gemfile.
 
