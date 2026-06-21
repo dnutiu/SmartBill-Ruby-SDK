@@ -6,6 +6,7 @@ module Smartbill
       # +/invoice+ endpoints.
       class InvoicesService < BaseService
         def create(invoice)
+          validate(invoice, Contracts::InvoiceContract)
           parse(execute(build_request(
                           method: "POST", base_url: @client.base_url, path: "invoice",
                           json_body: dump(invoice), auth_header: @client.auth_header
@@ -21,6 +22,7 @@ module Smartbill
         end
 
         def reverse(storno)
+          validate(storno, Contracts::StornoContract)
           parse(execute(build_request(
                           method: "POST", base_url: @client.base_url, path: "invoice/reverse",
                           json_body: dump(storno), auth_header: @client.auth_header

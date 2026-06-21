@@ -6,11 +6,11 @@ module Smartbill
       # Request body for +POST /invoice/reverse+ (stornare factura).
       #
       # Sent as a bare object (no envelope).
-      class StornoRequest < Model
-        field :company_vat_code, required: true
-        field :series_name, required: true
-        field :number, required: true
-        field :issue_date
+      class StornoRequest < Struct
+        attribute :company_vat_code, Types::Strict::String
+        attribute :series_name, Types::Strict::String
+        attribute :number, Types::Strict::String
+        attribute :issue_date, Types::Strict::String.optional.default(nil)
       end
     end
   end

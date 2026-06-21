@@ -4,9 +4,10 @@
 
 ## OVERVIEW
 Project: **smartbill-sdk** (gem name `smartbill-sdk`, namespace `Smartbill::Sdk`)
-Stack: Ruby ≥ 3.2, stdlib `Net::HTTP` + `base64` + `json`, autoloading via
-`zeitwerk`; build via Bundler/gemspec; tests with `minitest` + `WebMock`; lint
-with `RuboCop`.
+Stack: Ruby ≥ 3.2, stdlib `Net::HTTP` + `base64` + `json`, models via
+`dry-struct` + `dry-types` + `dry-inflector`, request validation via
+`dry-validation`, autoloading via `zeitwerk`; build via Bundler/gemspec;
+tests with `minitest` + `WebMock`; lint with `RuboCop`.
 
 A Ruby SDK for the [SmartBill Cloud REST API](https://www.facturionline.ro/api-program-facturare/)
 offering a **synchronous** `Smartbill::Sdk::Client` with typed request/response
@@ -38,8 +39,9 @@ lib/smartbill/sdk/transport.rb        # Transport module: build_auth, build_requ
 lib/smartbill/sdk/transport/request.rb        # Transport::Request struct
 lib/smartbill/sdk/transport/rate_limiter.rb   # Transport::RateLimiter
 lib/smartbill/sdk/client.rb           # Client (sync) + services wiring
-lib/smartbill/sdk/models.rb           # Models namespace
-lib/smartbill/sdk/models/model.rb             # Model base class + `field` DSL (snake_case <-> camelCase)
+lib/smartbill/sdk/types.rb                # Types (Dry::Types) + StrOrInt sum type
+lib/smartbill/sdk/models.rb           # Models namespace + INFLECTOR
+lib/smartbill/sdk/models/struct.rb             # Struct < Dry::Struct: snake_case<->camelCase, to_h, to_attributes, ValidationError translation
 lib/smartbill/sdk/models/document_type.rb     # DocumentType (constants)
 lib/smartbill/sdk/models/payment_type.rb      # PaymentType (constants)
 lib/smartbill/sdk/models/discount_type.rb     # DiscountType (constants)
@@ -76,6 +78,15 @@ lib/smartbill/sdk/services/payments_service.rb    # PaymentsService
 lib/smartbill/sdk/services/email_service.rb       # EmailService
 lib/smartbill/sdk/services/configuration_service.rb # ConfigurationService (taxes + series)
 lib/smartbill/sdk/services/stocks_service.rb      # StocksService
+lib/smartbill/sdk/contracts.rb         # Contracts namespace (dry-validation)
+lib/smartbill/sdk/contracts/base.rb             # Contracts::Base < Dry::Validation::Contract + DATE_REGEX + validate!
+lib/smartbill/sdk/contracts/invoice_contract.rb
+lib/smartbill/sdk/contracts/estimate_contract.rb
+lib/smartbill/sdk/contracts/payment_contract.rb
+lib/smartbill/sdk/contracts/email_contract.rb
+lib/smartbill/sdk/contracts/storno_contract.rb
+lib/smartbill/sdk/contracts/invoice_payment_contract.rb
+lib/smartbill/sdk/contracts/invoice_ref_contract.rb
 test/                             # minitest + WebMock suite (60 tests)
 examples/                         # standalone runnable Ruby scripts
 skills/                           # pi agent skills (SKILL.md per API area)
@@ -107,19 +118,38 @@ sig/smartbill/sdk.rbs             # RBS signature stub (not yet filled in)
     `version.rb` → `VERSION`), add an entry to `loader.inflector.inflect`
     in `lib/smartbill/sdk.rb`.
 *   **Style**: 2-space indent, double-quote strings (enforced by RuboCop).
-*   **Models**: subclass `Smartbill::Sdk::Models::Model` and declare fields
-    with `field :snake_name, json_key: "camelCase", required: ..., type: ...`.
-    `type:` is a Model subclass for nested objects, or `[ModelSubclass]` for
-    arrays of nested objects. Serialize with `#to_h` (camelCase keys, nils
-    excluded) or `#to_json`. Input accepts snake_case, camelCase and extra
-    `input_keys:` aliases (e.g. `InvoiceRef` accepts both `seriesName` and
-    `series`). Unknown input keys are preserved as extras.
+*   **Models**: subclass `Smartbill::Sdk::Models::Struct` (a `Dry::Struct`)
+    and declare attributes with the dry-struct `attribute` DSL using types
+    from `Smartbill::Sdk::Types` (e.g. `attribute :company_vat_code,
+    Types::Strict::String`; `attribute :price, Types::Coercible::Float.optional.default(nil)`;
+    `attribute :products, Types::Array.of(Product).default([].freeze)`).
+    The base `Struct` handles: snake_case/camelCase input key normalization
+    (`transform_keys` + `Dry::Inflector`), camelCase output via `#to_h`
+    (nils omitted by default), recursive nested serialization, and
+    `Dry::Struct::Error` → `ValidationError` translation. Mixed string/int
+    fields use `Types::StrOrInt`. Unknown input keys are **ignored** (not
+    preserved) — permissive parsing without re-emission. Use `#to_attributes`
+    for the snake_case hash (with nils, nested structs → hashes) fed to
+    contracts.
 *   **Enums**: plain modules of string/int constants (`PaymentType::CHITANTA`
     == `"Chitanta"`). Pass the constant; it is stored/serialized as-is.
+*   **Validation**: each request model has a `Smartbill::Sdk::Contracts::*Contract`
+    (`< Contracts::Base < Dry::Validation::Contract`). The contract's `params`
+    block declares only the fields with semantic rules (dates via
+    `DATE_REGEX`, enum membership via `included_in?`, ranges, nested hashes);
+    unknown keys are ignored by dry-validation. Services call
+    `validate(struct, Contracts::XContract)` before sending, which runs
+    `Contract.validate!(struct)` → `contract.new.call(struct.to_attributes)`
+    and raises `ValidationError` with aggregated `path text` messages on
+    failure. To add a rule, edit the contract's `params` block — do **not**
+    re-declare every field, only the ones you validate.
 *   **Services**: each service builds a `Transport::Request` via
     `Transport.build_request(...)` and parses the response with
     `Services.parse(payload, ModelClass)`. Services get the client (executor)
-    injected; they call `@client.execute(request, binary: ...)`.
+    injected; they call `@client.execute(request, binary: ...)`. Request-taking
+    methods (`invoices.create`, `invoices.reverse`, `estimates.create`,
+    `payments.create`, `email.send`) call `validate(model, Contracts::XContract)`
+    **before** building the request so invalid input never hits the network.
 *   **Errors**: raise `Smartbill::Sdk::Error` subclasses (one per file under
     `lib/smartbill/sdk/`); never bare `RuntimeError`. `Transport.handle_response`
     is the single place that maps HTTP status / envelopes to exceptions.
@@ -154,7 +184,9 @@ sig/smartbill/sdk.rbs             # RBS signature stub (not yet filled in)
 *   **Tests are mocked**: no network calls; WebMock intercepts `Net::HTTP`.
     The full suite (60 tests) passes offline.
 *   **Runtime dependencies**: `base64` (no longer a default gem in Ruby
-    3.4+) and `zeitwerk` (autoloader). Both are declared in the gemspec.
+    3.4+), `zeitwerk` (autoloader), `dry-struct` + `dry-types` +
+    `dry-inflector` (models) and `dry-validation` (request contracts). All
+    are declared in the gemspec.
 *   **Port origin**: this codebase was ported from the Python
     `smartbill-rest-sdk`; behavior, models and endpoint coverage match.
 *   **Agent skills**: `skills/` ships three pi `SKILL.md` files

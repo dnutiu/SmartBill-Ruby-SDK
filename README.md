@@ -10,18 +10,21 @@ This is a Ruby port of the Python
 ## Features
 
 - Synchronous `Smartbill::Sdk::Client`.
-- Typed request/response models for invoices, proformas (estimates),
-  payments, fiscal receipts (`bon fiscal`), e-mail, taxes, series and
-  stocks.
+- Typed request/response models built on **dry-struct** (type coercion,
+  required-attribute presence, snake_case ⇄ camelCase aliasing) with
+  **dry-validation** contracts enforcing semantic rules (date formats,
+  payment-type enum, positive amounts, recipient e-mail shape) before
+  every request is sent.
 - snake_case Ruby attributes aliased to camelCase JSON automatically
   (`company_vat_code` ↔ `companyVatCode`).
-- Permissive models — unknown API fields are preserved, so new fields
+- Permissive parsing — unknown API fields are ignored, so new fields
   don't break parsing.
 - Helper exception hierarchy with the API `errorText` surfaced.
 - Optional client-side rate limiter (SmartBill allows 30 calls / 10s,
   then blocks for 10 minutes).
-- Minimal runtime dependencies: just the stdlib `base64` gem and `zeitwerk`
-  for autoloading (uses `Net::HTTP` under the hood).
+- Runtime dependencies: `dry-struct`, `dry-validation`, `dry-types`,
+  `dry-inflector`, `zeitwerk` (autoloading), and the stdlib `base64`
+  gem (uses `Net::HTTP` under the hood).
 
 ## Installation
 
@@ -155,7 +158,9 @@ All errors descend from `Smartbill::Sdk::Error`:
 - `APIError` — has `.error_text`, `.message_field`, `.status_code`
   (the API's `errorText` is surfaced in `.error_text`).
 - `TransportError` — network-level failure.
-- `ValidationError` — a model is missing required fields.
+- `ValidationError` — a model is missing required fields or fails its
+  validation contract (bad date format, unknown payment type, non-positive
+  amount, etc.). Raised before any HTTP call is made.
 
 ```ruby
 rescue Smartbill::Sdk::AuthError => e
@@ -163,6 +168,28 @@ rescue Smartbill::Sdk::AuthError => e
 rescue Smartbill::Sdk::APIError => e
   puts e.error_text, e.status_code
 end
+```
+
+## Validation
+
+Request models are checked against a dry-validation contract before being
+sent, so malformed requests raise `ValidationError` locally instead of
+round-tripping to the SmartBill API. The contracts enforce:
+
+- date fields match `YYYY-MM-DD`;
+- `Payment#type` is one of the SmartBill payment types;
+- `EmailDocument#type` is `factura` / `proforma` and recipients look like
+  e-mail addresses;
+- numeric amounts are positive; `precision` is a non-negative integer;
+- nested payment-at-issuance blocks (`Invoice#payment`) are validated too.
+
+You can also run a contract explicitly:
+
+```ruby
+Smartbill::Sdk::Contracts::InvoiceContract.validate!(invoice) # raises ValidationError
+result = Smartbill::Sdk::Contracts::InvoiceContract.new.call(invoice.to_attributes)
+result.success?  # => true / false
+result.errors.to_h  # => { issue_date: ["is in invalid format"] }
 ```
 
 ## Rate limiting

@@ -103,9 +103,12 @@ module Smartbill
       end
     end
 
-    def test_extra_fields_are_preserved
+    # dry-struct ignores unknown input keys (permissive parsing — new API
+    # fields don't break construction) but does not re-emit them on output.
+    def test_extra_fields_are_ignored
       c = Models::Client.new(name: "X", "extraField" => 42)
-      assert_equal 42, c.to_h["extraField"]
+      assert_equal "X", c.name
+      refute c.to_h.key?("extraField")
     end
   end
 end

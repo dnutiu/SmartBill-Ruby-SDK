@@ -6,6 +6,7 @@ module Smartbill
       # +/estimate+ endpoints.
       class EstimatesService < BaseService
         def create(estimate)
+          validate(estimate, Contracts::EstimateContract)
           parse(execute(build_request(
                           method: "POST", base_url: @client.base_url, path: "estimate",
                           json_body: dump(estimate), auth_header: @client.auth_header

@@ -6,6 +6,7 @@ module Smartbill
       # +/payment+ endpoints.
       class PaymentsService < BaseService
         def create(payment)
+          validate(payment, Contracts::PaymentContract)
           parse(execute(build_request(
                           method: "POST", base_url: @client.base_url, path: "payment",
                           json_body: dump(payment), auth_header: @client.auth_header

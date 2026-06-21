@@ -4,10 +4,10 @@ module Smartbill
   module Sdk
     module Models
       # Parsed response of +GET /series+.
-      class SeriesListResponse < Model
-        field :error_text
-        field :message
-        field :list, type: [Series], default: []
+      class SeriesListResponse < Struct
+        attribute :error_text, Types::Strict::String.optional.default(nil)
+        attribute :message, Types::Strict::String.optional.default(nil)
+        attribute :list, Types::Array.of(Series).default([].freeze)
       end
     end
   end

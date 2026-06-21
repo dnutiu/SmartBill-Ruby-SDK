@@ -11,6 +11,13 @@ module Smartbill
 
         private
 
+        # Run +contract+.validate! on +struct+, raising {ValidationError}
+        # on failure. No-op contract-wise if +contract+ is nil.
+        def validate(struct, contract)
+          contract.validate!(struct)
+          struct
+        end
+
         def build_request(...)
           Transport.build_request(...)
         end

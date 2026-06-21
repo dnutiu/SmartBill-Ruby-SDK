@@ -9,7 +9,7 @@ module Smartbill
       # generated receipt id) and by +GET /payment/text+ (which returns the
       # base64-encoded fiscal-printer text in +message+).
       class FiscalReceiptResponse < BaseResponse
-        field :id
+        attribute :id, Types::StrOrInt.optional.default(nil)
       end
     end
   end

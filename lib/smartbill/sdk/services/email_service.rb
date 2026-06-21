@@ -6,6 +6,7 @@ module Smartbill
       # +/document/send+ endpoint.
       class EmailService < BaseService
         def send(email)
+          validate(email, Contracts::EmailContract)
           parse(execute(build_request(
                           method: "POST", base_url: @client.base_url, path: "document/send",
                           json_body: dump(email), auth_header: @client.auth_header

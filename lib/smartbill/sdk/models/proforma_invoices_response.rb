@@ -5,8 +5,8 @@ module Smartbill
     module Models
       # Response for +GET /estimate/invoices+.
       class ProformaInvoicesResponse < BaseResponse
-        field :are_invoices_created
-        field :invoices, type: [InvoiceRef], default: []
+        attribute :are_invoices_created, Types::Strict::Bool.optional.default(nil)
+        attribute :invoices, Types::Array.of(InvoiceRef).default([].freeze)
       end
     end
   end
