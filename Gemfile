@@ -10,4 +10,6 @@ gem "rake", "~> 13.0"
 
 gem "minitest", "~> 5.16"
 
+gem "webmock", "~> 3.19", group: :test
+
 gem "rubocop", "~> 1.21"

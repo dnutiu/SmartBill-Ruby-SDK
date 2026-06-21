@@ -1,8 +1,55 @@
 AllCops:
   TargetRubyVersion: 3.2
+  NewCops: enable
+  SuggestExtensions: false
 
 Style/StringLiterals:
   EnforcedStyle: double_quotes
 
 Style/StringLiteralsInInterpolation:
   EnforcedStyle: double_quotes
+
+Style/Documentation:
+  Enabled: true
+
+# The SDK has endpoints with many optional keyword arguments and a few
+# inherently branchy response handlers; the defaults are too tight.
+Metrics/MethodLength:
+  Max: 25
+  Exclude:
+    - "examples/**/*"
+Metrics/AbcSize:
+  Max: 30
+  Exclude:
+    - "test/**/*"
+    - "examples/**/*"
+Metrics/BlockLength:
+  Exclude:
+    - "examples/**/*"
+    - "smartbill-sdk.gemspec"
+Metrics/ClassLength:
+  Max: 160
+Metrics/ModuleLength:
+  Max: 160
+Metrics/ParameterLists:
+  Max: 10
+  CountKeywordArgs: true
+Metrics/CyclomaticComplexity:
+  Max: 15
+Metrics/PerceivedComplexity:
+  Max: 15
+
+# Test bodies legitimately pack a lot onto one line (stub + assertion).
+Layout/LineLength:
+  Max: 120
+  Exclude:
+    - "test/**/*"
+
+# `id` is an idiomatic 2-letter parameter name used by the SmartBill API.
+Naming/MethodParameterName:
+  MinNameLength: 2
+
+# Method names such as `notify_403` / `test_handle_response_401` are clearer
+# with the HTTP status code than without.
+Naming/VariableNumber:
+  Enabled: false
