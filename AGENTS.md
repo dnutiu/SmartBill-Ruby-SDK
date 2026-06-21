@@ -90,7 +90,8 @@ lib/smartbill/sdk/contracts/invoice_ref_contract.rb
 test/                             # minitest + WebMock suite (60 tests)
 examples/                         # standalone runnable Ruby scripts
 skills/                           # pi agent skills (SKILL.md per API area)
-sig/smartbill/sdk.rbs             # RBS signature stub (not yet filled in)
+sig/smartbill/sdk.rbs             # RBS type signatures for the full public API
+Steepfile                         # opt-in Steep typecheck configuration
 ```
 
 ## COMMANDS
@@ -104,6 +105,8 @@ sig/smartbill/sdk.rbs             # RBS signature stub (not yet filled in)
 | Build gem           | `bundle exec rake build`         |
 | Console             | `bin/console`                    |
 | Run an example      | `bundle exec ruby examples/create_invoice_sync.rb` |
+| Validate RBS sigs   | `bundle exec rake rbs:validate` |
+| Typecheck (opt-in)  | `bundle exec steep check` (needs dry-rb RBS; see note below) |
 
 ## CODING STANDARDS
 *   **Language**: Ruby 3.2+; `# frozen_string_literal: true` everywhere.
@@ -192,4 +195,17 @@ sig/smartbill/sdk.rbs             # RBS signature stub (not yet filled in)
 *   **Agent skills**: `skills/` ships three pi `SKILL.md` files
     (`smartbill-invoices`, `smartbill-payments`, `smartbill-email`) that
     teach coding agents how to use the SDK, with Ruby code snippets.
+*   **Type signatures**: `sig/smartbill/sdk.rbs` contains RBS signatures for
+    the entire public API — `Client`, all `Services::*`, all `Models::*`
+    (with read-only `attr_reader` per attribute and nil-able `?` types for
+    optional fields), all `Contracts::*`, the `Transport` module + `Request`/
+    `Response`/`RateLimiter`, `NetHttpAdapter`, and the `Error` hierarchy.
+    `bundle exec rake rbs:validate` checks syntax + consistency (passes
+    clean). `steep check` is configured via the `Steepfile` but cannot fully
+    typecheck the implementation because `dry-struct` / `dry-validation` do
+    not ship RBS signatures (their DSL — `attribute`, `optional`, `required`,
+    `filled`, `params`, ... — reports as `NoMethod`); this is an inherent
+    limitation, not a signature defect. When adding a public class/method,
+    add its signature to `sig/smartbill/sdk.rbs` in the matching namespace
+    section and keep `rake rbs:validate` green.
 *   No other context files (`.cursorrules`, `CLAUDE.md`, etc.) exist.

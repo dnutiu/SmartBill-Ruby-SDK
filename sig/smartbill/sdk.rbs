@@ -1,6 +1,661 @@
 module Smartbill
   module Sdk
     VERSION: String
-    # See the writing guide of rbs: https://github.com/ruby/rbs#guides
+
+    DEFAULT_BASE_URL: String
+  end
+end
+
+# --- Exceptions ---------------------------------------------------------------
+
+module Smartbill
+  module Sdk
+    class Error < StandardError
+    end
+
+    class AuthError < Error
+    end
+
+    class RateLimitError < Error
+    end
+
+    class TransportError < Error
+    end
+
+    class ValidationError < Error
+    end
+
+    class APIError < Error
+      attr_reader error_text: String
+      attr_reader message_field: String?
+      attr_reader status_code: Integer?
+
+      def initialize: (
+        ?error_text: String,
+        ?message: String?,
+        ?status_code: Integer?
+      ) -> void
+    end
+  end
+end
+
+# --- Types --------------------------------------------------------------------
+
+module Smartbill
+  module Sdk
+    module Types
+      # A strict String or strict Integer (the SmartBill API returns some
+      # fields as either, depending on the endpoint).
+      type str_or_int = String | Integer
+
+      StrOrInt: untyped
+    end
+  end
+end
+
+# --- HTTP transport -----------------------------------------------------------
+
+module Smartbill
+  module Sdk
+    # A simple HTTP response value object returned by adapters.
+    class Response < ::Struct[untyped]
+      def self.new: (status: Integer, body: String?, content_type: String?) -> Response
+      def initialize: (status: Integer, body: String?, content_type: String?) -> void
+
+      attr_accessor status(): Integer
+      attr_accessor body(): String?
+      attr_accessor content_type(): String?
+    end
+  end
+end
+
+module Smartbill
+  module Sdk
+    module Transport
+      DEFAULT_BASE_URL: String
+      DEFAULT_TIMEOUT: Float
+
+      ENVELOPE_KEYS: Array[String]
+      ERROR_FIELDS: Array[String]
+
+      # A request value object built by `build_request` and sent by an adapter.
+      class Request < ::Struct[untyped]
+        def self.new: (
+          http_method: String,
+          url: String,
+          headers: Hash[String, String],
+          query: Hash[String, untyped]?,
+          body: String?
+        ) -> Request
+        def initialize: (
+          http_method: String,
+          url: String,
+          headers: Hash[String, String],
+          query: Hash[String, untyped]?,
+          body: String?
+        ) -> void
+
+        attr_accessor http_method(): String
+        attr_accessor url(): String
+        attr_accessor headers(): Hash[String, String]
+        attr_accessor query(): Hash[String, untyped]?
+        attr_accessor body(): String?
+      end
+
+      def self.build_auth_header: (String username, String token) -> String
+      def self.build_auth: (String username, String token) -> String
+
+      def self.build_request: (
+        method: String,
+        base_url: String,
+        path: String,
+        ?params: Hash[String, untyped]?,
+        ?json_body: untyped?,
+        ?accept: String,
+        ?content_type: String,
+        ?auth_header: String?
+      ) -> Request
+
+      def self.parse_envelope: (untyped payload) -> untyped
+
+      def self.extract_error: (untyped envelope) -> [String, String?]
+
+      def self.handle_response: (Response response, ?binary: bool) -> untyped
+
+      # Simple token-bucket limiter: `max_calls` per `window_seconds`.
+      class RateLimiter
+        attr_reader max_calls: Integer
+        attr_reader window_seconds: Float
+
+        def initialize: (?max_calls: Integer, ?window_seconds: Float) -> void
+        def acquire: () -> void
+        def notify_403: () -> void
+      end
+    end
+  end
+end
+
+module Smartbill
+  module Sdk
+    # Default HTTP adapter backed by stdlib `Net::HTTP`.
+    #
+    # The SDK talks to the adapter through a single method, `#call`, which
+    # receives a `Transport::Request` and returns a `Response`.
+    class NetHttpAdapter
+      def initialize: (?timeout: Integer | Float) -> void
+      def call: (Transport::Request req) -> Response
+    end
+  end
+end
+
+# --- Models (dry-struct) ------------------------------------------------------
+
+module Smartbill
+  module Sdk
+    module Models
+      INFLECTOR: untyped # Dry::Inflector
+
+      # Base class for every SmartBill request/response model. A thin adapter
+      # over `Dry::Struct` providing snake_case <-> camelCase I/O, type
+      # coercion, required-attribute presence (raises `ValidationError`), and
+      # permissive parsing (unknown input keys are ignored).
+      class Struct
+        # Construct a struct, translating `Dry::Struct::Error` (e.g. a missing
+        # required attribute) into `ValidationError`.
+        def self.new: (?untyped attrs) ?{ () -> void } -> instance
+
+        # Serialize to a camelCase-keyed Hash matching the SmartBill API,
+        # omitting nil values by default. Nested structs and arrays of
+        # structs are serialized recursively.
+        def to_h: (?exclude_none: bool) -> Hash[String, untyped]
+
+        def to_json: (*untyped args) -> String
+
+        # Return a snake_case Symbol-keyed Hash (including nils) reflecting
+        # the Ruby attributes, with nested structs recursively converted to
+        # hashes. Used as input to the validation contracts.
+        def to_attributes: () -> Hash[Symbol, untyped]
+      end
+
+      # Document type for the e-mail endpoint.
+      module DocumentType
+        INVOICE: String   # "factura"
+        PROFORMA: String   # "proforma"
+      end
+
+      # Possible values for `type` on payments / incasari.
+      module PaymentType
+        CHITANTA: String
+        BON: String
+        CARD: String
+        CARD_ONLINE: String
+        CEC: String
+        BILET_ORDIN: String
+        ORDIN_PLATA: String
+        MANDAT_POSTAL: String
+        EXTRAS_DE_CONT: String
+        RAMBURS: String
+        ALTA_INCASARE: String
+      end
+
+      # Discount type: 1 = valoric, 2 = procentual.
+      module DiscountType
+        VALORIC: Integer     # 1
+        PROCENTUAL: Integer  # 2
+      end
+
+      # Client data (`client` / `clientMin`).
+      class Client < Struct
+        attr_reader name: String
+        attr_reader vat_code: String?
+        attr_reader code: String?
+        attr_reader address: String?
+        attr_reader reg_com: String?
+        attr_reader is_tax_payer: bool?
+        attr_reader contact: String?
+        attr_reader phone: String?
+        attr_reader city: String?
+        attr_reader county: String?
+        attr_reader country: String?
+        attr_reader email: String?
+        attr_reader bank: String?
+        attr_reader iban: String?
+        attr_reader save_to_db: bool?
+      end
+
+      # A product or discount line on an invoice / proforma / bon fiscal.
+      class Product < Struct
+        attr_reader name: String
+        attr_reader code: String?
+        attr_reader product_description: String?
+        attr_reader translated_name: String?
+        attr_reader translated_measuring_unit: String?
+        attr_reader is_discount: bool?
+        attr_reader number_of_items: Integer?
+        attr_reader measuring_unit_name: String?
+        attr_reader currency: String?
+        attr_reader quantity: Float?
+        attr_reader price: Float?
+        attr_reader is_tax_included: bool?
+        attr_reader tax_name: String?
+        attr_reader tax_percentage: Float?
+        attr_reader exchange_rate: Float?
+        attr_reader save_to_db: bool?
+        attr_reader warehouse_name: String?
+        attr_reader is_service: bool?
+        attr_reader discount_type: Integer?
+        attr_reader discount_percentage: Float?
+        attr_reader discount_value: Float?
+        attr_reader discount_tax_value: Float?
+      end
+
+      # Reference to an existing document (series + number). Accepts both
+      # `seriesName` and `series` on input; always emits `seriesName`.
+      class InvoiceRef < Struct
+        attr_reader series_name: String
+        attr_reader number: String
+      end
+
+      # Payment-at-issuance block embedded in an `Invoice`.
+      class InvoicePayment < Struct
+        attr_reader value: Float
+        attr_reader payment_series: String?
+        attr_reader type: String
+        attr_reader is_cash: bool?
+      end
+
+      # Request body for `POST /invoice` (emitere factura).
+      class Invoice < Struct
+        attr_reader company_vat_code: String
+        attr_reader client: Client?
+        attr_reader is_draft: bool?
+        attr_reader issue_date: String?
+        attr_reader series_name: String?
+        attr_reader currency: String?
+        attr_reader exchange_rate: Float?
+        attr_reader language: String?
+        attr_reader precision: Integer?
+        attr_reader issuer_cnp: String?
+        attr_reader issuer_name: String?
+        attr_reader aviz: String?
+        attr_reader due_date: String?
+        attr_reader mentions: String?
+        attr_reader observations: String?
+        attr_reader delegate_auto: String?
+        attr_reader delegate_identity_card: String?
+        attr_reader delegate_name: String?
+        attr_reader delivery_date: String?
+        attr_reader payment_date: String?
+        attr_reader use_stock: bool?
+        attr_reader use_estimate_details: bool?
+        attr_reader use_payment_tax: bool?
+        attr_reader payment_base: Float?
+        attr_reader colected_tax: Float?
+        attr_reader payment_total: Float?
+        attr_reader payment_url: String?
+        attr_reader estimate: InvoiceRef?
+        attr_reader products: Array[Product]
+        attr_reader payment: InvoicePayment?
+      end
+
+      # Request body for `POST /invoice/reverse` (stornare factura).
+      class StornoRequest < Struct
+        attr_reader company_vat_code: String
+        attr_reader series_name: String
+        attr_reader number: String
+        attr_reader issue_date: String?
+      end
+
+      # Request body for `POST /estimate` (emitere proforma).
+      class Estimate < Struct
+        attr_reader company_vat_code: String
+        attr_reader client: Client?
+        attr_reader is_draft: bool?
+        attr_reader issue_date: String?
+        attr_reader series_name: String?
+        attr_reader currency: String?
+        attr_reader exchange_rate: Float?
+        attr_reader language: String?
+        attr_reader precision: Integer?
+        attr_reader issuer_cnp: String?
+        attr_reader issuer_name: String?
+        attr_reader aviz: String?
+        attr_reader due_date: String?
+        attr_reader mentions: String?
+        attr_reader observations: String?
+        attr_reader delegate_name: String?
+        attr_reader delegate_identity_card: String?
+        attr_reader delegate_auto: String?
+        attr_reader payment_url: String?
+        attr_reader use_stock: bool?
+        attr_reader products: Array[Product]
+      end
+
+      # Request body for `POST /payment`.
+      class Payment < Struct
+        attr_reader company_vat_code: String
+        attr_reader client: Client?
+        attr_reader issue_date: String?
+        attr_reader currency: String?
+        attr_reader language: String?
+        attr_reader exchange_rate: Float?
+        attr_reader precision: Integer?
+        attr_reader issuer_cnp: String?
+        attr_reader series_name: String?
+        attr_reader number: String?
+        attr_reader value: Float?
+        attr_reader text: String?
+        attr_reader translated_text: String?
+        attr_reader is_draft: bool?
+        attr_reader type: String?
+        attr_reader is_cash: bool?
+        attr_reader observation: String?
+        attr_reader use_invoice_details: bool?
+        attr_reader invoices_list: Array[InvoiceRef]?
+        attr_reader return_fiscal_printer_text: bool?
+        attr_reader use_stock: bool?
+        attr_reader products: Array[Product]?
+        attr_reader received_cash: Float?
+        attr_reader received_card: Float?
+        attr_reader received_tichete_masa: Float?
+        attr_reader received_tichete_cadou: Float?
+        attr_reader received_ordin_de_plata: Float?
+        attr_reader received_cec: Float?
+        attr_reader received_credit: Float?
+        attr_reader received_cupon: Float?
+        attr_reader received_puncte_de_fidelitate: Float?
+        attr_reader received_bonuri_valoare_fixa: Float?
+        attr_reader received_moneda_alternativa: Float?
+      end
+
+      # Request body for `POST /document/send`.
+      class EmailDocument < Struct
+        attr_reader company_vat_code: String
+        attr_reader series_name: String
+        attr_reader number: String
+        attr_reader type: String?
+        attr_reader subject: String?
+        attr_reader to: String?
+        attr_reader cc: String?
+        attr_reader bcc: String?
+        attr_reader body_text: String?
+      end
+
+      # A VAT rate entry from `GET /tax`.
+      class Tax < Struct
+        attr_reader name: String?
+        attr_reader percentage: Float?
+        attr_reader id: Types::str_or_int?
+      end
+
+      # A document series entry from `GET /series`.
+      class Series < Struct
+        attr_reader name: String?
+        attr_reader next_number: Types::str_or_int?
+        attr_reader type: String?
+      end
+
+      # Parsed response of `GET /tax`.
+      class TaxesResponse < Struct
+        attr_reader error_text: String?
+        attr_reader message: String?
+        attr_reader taxes: Array[Tax]
+      end
+
+      # Parsed response of `GET /series`.
+      class SeriesListResponse < Struct
+        attr_reader error_text: String?
+        attr_reader message: String?
+        attr_reader list: Array[Series]
+      end
+
+      # A product entry within a stock list.
+      class StockProduct < Struct
+        attr_reader measuring_unit: String?
+        attr_reader product_code: String?
+        attr_reader product_name: String?
+        attr_reader quantity: Float?
+      end
+
+      # Warehouse details attached to a stock list entry.
+      class StockWarehouse < Struct
+        attr_reader warehouse_name: String?
+        attr_reader warehouse_type: String?
+      end
+
+      # A `list` entry under the stocks response — products + warehouse.
+      class StockList < Struct
+        attr_reader products: Array[StockProduct]
+        attr_reader warehouse: StockWarehouse?
+      end
+
+      # Parsed response of `GET /stocks`.
+      class StocksResponse < Struct
+        attr_reader error_text: String?
+        attr_reader message: String?
+        attr_reader list: Array[StockList]
+      end
+
+      # Common envelope: `errorText`/`message`/`number`/`series`/`url`.
+      class BaseResponse < Struct
+        attr_reader error_text: String?
+        attr_reader message: String?
+        attr_reader number: String?
+        attr_reader series: String?
+        attr_reader url: String?
+      end
+
+      # Response for invoice / proforma creation.
+      class InvoiceCreateResponse < BaseResponse
+      end
+
+      # Response for `POST /invoice/reverse`.
+      class StornoResponse < BaseResponse
+        attr_reader document_url: String?
+        attr_reader document_id: Types::str_or_int?
+        attr_reader document_view_url: String?
+      end
+
+      # Response for `GET /invoice/paymentstatus`.
+      class PaymentStatusResponse < Struct
+        attr_reader error_text: String?
+        attr_reader message: String?
+        attr_reader number: String?
+        attr_reader series: String?
+        attr_reader invoice_total_amount: Float?
+        attr_reader paid_amount: Float?
+        attr_reader unpaid_amount: Float?
+        attr_reader paid: bool?
+      end
+
+      # Response for `GET /estimate/invoices`.
+      class ProformaInvoicesResponse < BaseResponse
+        attr_reader are_invoices_created: bool?
+        attr_reader invoices: Array[InvoiceRef]
+      end
+
+      # The `status` block of an `EmailResponse`.
+      class EmailStatus < Struct
+        attr_reader code: Types::str_or_int?
+        attr_reader message: String?
+      end
+
+      # Response for `POST /document/send` (`Response.status`).
+      class EmailResponse < Struct
+        attr_reader status: EmailStatus?
+      end
+
+      # Response for bon-fiscal endpoints.
+      class FiscalReceiptResponse < BaseResponse
+        attr_reader id: Types::str_or_int?
+      end
+    end
+  end
+end
+
+# --- Validation contracts (dry-validation) ------------------------------------
+
+module Smartbill
+  module Sdk
+    module Contracts
+      # Base class for every SmartBill validation contract.
+      class Base
+        DATE_REGEX: Regexp
+
+        # Validate `struct` against this contract, raising `ValidationError`
+        # with the aggregated error messages on failure. Returns the struct
+        # unchanged on success.
+        def self.validate!: (Models::Struct struct) -> Models::Struct
+      end
+
+      class InvoiceRefContract < Base
+      end
+
+      class InvoicePaymentContract < Base
+      end
+
+      class InvoiceContract < Base
+      end
+
+      class EstimateContract < Base
+      end
+
+      class PaymentContract < Base
+        PAYMENT_TYPES: Array[String]
+      end
+
+      class EmailContract < Base
+        DOCUMENT_TYPES: Array[String]
+        EMAIL_REGEX: Regexp
+      end
+
+      class StornoContract < Base
+      end
+    end
+  end
+end
+
+# --- Services -----------------------------------------------------------------
+
+module Smartbill
+  module Sdk
+    module Services
+      # Serialize a model, optionally wrapping it in an envelope.
+      def self.dump_model: (Models::Struct model, ?envelope_key: String?) -> untyped
+
+      # Parse a payload into a model instance.
+      def self.parse: (untyped payload, untyped model_class) -> Models::Struct
+
+      # Base class for all services.
+      class BaseService
+        def initialize: (Client client) -> void
+      end
+
+      # `/invoice` endpoints.
+      class InvoicesService < BaseService
+        def create: (Models::Invoice invoice) -> Models::InvoiceCreateResponse
+        def delete: (String cif, String series_name, String number) -> Models::BaseResponse
+        def reverse: (Models::StornoRequest storno) -> Models::StornoResponse
+        def cancel: (String cif, String series_name, String number) -> Models::BaseResponse
+        def restore: (String cif, String series_name, String number) -> Models::BaseResponse
+        def payment_status: (String cif, String series_name, String number) -> Models::PaymentStatusResponse
+        # Returns the raw PDF body as a binary String.
+        def pdf: (String cif, String series_name, String number) -> String
+      end
+
+      # `/estimate` endpoints.
+      class EstimatesService < BaseService
+        def create: (Models::Estimate estimate) -> Models::InvoiceCreateResponse
+        def delete: (String cif, String series_name, String number) -> Models::BaseResponse
+        def cancel: (String cif, String series_name, String number) -> Models::BaseResponse
+        def restore: (String cif, String series_name, String number) -> Models::BaseResponse
+        def pdf: (String cif, String series_name, String number) -> String
+        def invoices_status: (String cif, String series_name, String number) -> Models::ProformaInvoicesResponse
+      end
+
+      # `/payment` endpoints.
+      class PaymentsService < BaseService
+        def create: (Models::Payment payment) -> Models::FiscalReceiptResponse
+
+        # Delete a non-chitanta payment via `DELETE /payment/v2`.
+        def delete_other: (
+          String cif,
+          payment_type: String,
+          ?payment_date: String?,
+          ?payment_value: Float?,
+          ?client_name: String?,
+          ?client_cif: String?,
+          ?invoice_series: String?,
+          ?invoice_number: String?
+        ) -> Models::BaseResponse
+
+        def delete_chitanta: (String cif, String series_name, String number) -> Models::BaseResponse
+        def fiscal_receipt_text: (String cif, String id) -> Models::FiscalReceiptResponse
+      end
+
+      # `/document/send` endpoint.
+      class EmailService < BaseService
+        def send: (Models::EmailDocument email) -> Models::EmailResponse
+      end
+
+      # `/tax` and `/series` endpoints. Note: on a `Client`, both
+      # `client.taxes` and `client.series` are the same `ConfigurationService`.
+      class ConfigurationService < BaseService
+        def taxes: (String cif) -> Models::TaxesResponse
+        def series: (String cif, ?type: String?) -> Models::SeriesListResponse
+      end
+
+      # `/stocks` endpoint.
+      class StocksService < BaseService
+        def get: (
+          String cif,
+          String date,
+          ?warehouse_name: String?,
+          ?product_name: String?,
+          ?product_code: String?
+        ) -> Models::StocksResponse
+      end
+    end
+  end
+end
+
+# --- Client -------------------------------------------------------------------
+
+module Smartbill
+  module Sdk
+    # Synchronous client for the SmartBill Cloud REST API.
+    class Client
+      attr_reader username: String
+      attr_reader token: String
+      attr_reader base_url: String
+      attr_reader auth_header: String
+      attr_reader invoices: Services::InvoicesService
+      attr_reader estimates: Services::EstimatesService
+      attr_reader payments: Services::PaymentsService
+      attr_reader email: Services::EmailService
+      attr_reader taxes: Services::ConfigurationService
+      attr_reader series: Services::ConfigurationService
+      attr_reader stocks: Services::StocksService
+
+      def initialize: (
+        username: String,
+        token: String,
+        ?base_url: String,
+        ?timeout: Float,
+        ?enforce_rate_limit: bool,
+        ?http: untyped
+      ) -> void
+
+      # Send a `Transport::Request` and return the parsed payload.
+      # When `binary` is true, the raw body String is returned.
+      def execute: (Transport::Request request, ?binary: bool) -> untyped
+
+      # Close the underlying HTTP adapter. A no-op for the default
+      # `Net::HTTP` adapter.
+      def close: () -> void
+
+      # Yield self to a block and ensure `#close` is called afterwards.
+      def with_client: () { (Client client) -> untyped } -> untyped
+    end
   end
 end

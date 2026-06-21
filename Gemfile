@@ -13,3 +13,6 @@ gem "minitest", "~> 5.16"
 gem "webmock", "~> 3.19", group: :test
 
 gem "rubocop", "~> 1.21"
+
+gem "rbs", "~> 3.5", group: :development
+gem "steep", "~> 1.7", group: :development

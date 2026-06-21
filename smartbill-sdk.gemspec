@@ -43,6 +43,8 @@ Gem::Specification.new do |spec|
   spec.add_dependency "zeitwerk", "~> 2.6"
 
   # Development / test dependencies live in the Gemfile.
+  # (base64, zeitwerk, dry-* are runtime deps above; minitest, webmock,
+  #  rake, rubocop, rbs, steep are dev deps in the Gemfile.)
 
   # For more information and examples about making a new gem, check out our
   # guide at: https://guides.rubygems.org/make-your-own-gem/

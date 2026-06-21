@@ -44,8 +44,17 @@ From source (development):
 
 ```bash
 bundle install
-bundle exec rake test      # run the test suite
+bundle exec rake test          # run the test suite
+bundle exec rake rubocop       # lint
+bundle exec rake rbs:validate  # validate the RBS type signatures
 ```
+
+The gem ships [RBS](https://github.com/ruby/rbs) type signatures in
+`sig/smartbill/sdk.rbs` covering the full public API (client, services,
+models, contracts, transport, exceptions). Opt-in typechecking with
+[Steep](https://github.com/soutaro/steep) is configured via the `Steepfile`,
+though a fully clean `steep check` currently requires RBS signatures for
+`dry-struct` / `dry-validation`, which are not bundled with those gems.
 
 ## Authentication
 
