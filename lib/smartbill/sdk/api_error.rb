@@ -2,22 +2,6 @@
 
 module Smartbill
   module Sdk
-    # Base class for all errors raised by the SDK.
-    class Error < StandardError; end
-
-    # Raised on HTTP 401 (bad credentials / company CIF).
-    class AuthError < Error; end
-
-    # Raised on HTTP 403 — SmartBill blocks access for 10 minutes after
-    # more than 30 calls / 10 seconds.
-    class RateLimitError < Error; end
-
-    # Raised on a network / transport-level failure.
-    class TransportError < Error; end
-
-    # Raised when a model fails validation (missing required fields).
-    class ValidationError < Error; end
-
     # Raised when the SmartBill API returns an error envelope or a non-2xx
     # response.
     #

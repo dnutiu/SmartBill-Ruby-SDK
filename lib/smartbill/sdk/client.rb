@@ -1,9 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "transport"
-require_relative "http_adapter"
-require_relative "services"
-
 module Smartbill
   module Sdk
     # Synchronous client for the SmartBill Cloud REST API.
@@ -17,7 +13,7 @@ module Smartbill
     #
     # Or with a block (closes automatically):
     #
-    #   Smartbill::Sdk::Client.new(username: "...", token: "...") do |client|
+    #   Smartbill::Sdk::Client.new(username: "...", token: "...").with_client do |client|
     #     client.invoices.create(invoice)
     #   end
     class Client

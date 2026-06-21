@@ -20,8 +20,8 @@ This is a Ruby port of the Python
 - Helper exception hierarchy with the API `errorText` surfaced.
 - Optional client-side rate limiter (SmartBill allows 30 calls / 10s,
   then blocks for 10 minutes).
-- Zero runtime dependencies beyond the stdlib `base64` gem (uses
-  `Net::HTTP` under the hood).
+- Minimal runtime dependencies: just the stdlib `base64` gem and `zeitwerk`
+  for autoloading (uses `Net::HTTP` under the hood).
 
 ## Installation
 

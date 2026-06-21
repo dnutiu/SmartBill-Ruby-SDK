@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "base"
-require_relative "common"
-
 module Smartbill
   module Sdk
     module Models
@@ -41,16 +38,6 @@ module Smartbill
         field :estimate, type: InvoiceRef
         field :products, type: [Product], default: []
         field :payment, type: InvoicePayment
-      end
-
-      # Request body for +POST /invoice/reverse+ (stornare factura).
-      #
-      # Sent as a bare object (no envelope).
-      class StornoRequest < Model
-        field :company_vat_code, required: true
-        field :series_name, required: true
-        field :number, required: true
-        field :issue_date
       end
     end
   end

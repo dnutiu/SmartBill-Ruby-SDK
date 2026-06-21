@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "base"
-require_relative "common"
-
 module Smartbill
   module Sdk
     module Models

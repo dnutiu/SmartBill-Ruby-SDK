@@ -34,8 +34,9 @@ Gem::Specification.new do |spec|
   spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
-  # Runtime dependencies (stdlib gems that are no longer default in Ruby 3.4+)
+  # Runtime dependencies
   spec.add_dependency "base64", "~> 0.2"
+  spec.add_dependency "zeitwerk", "~> 2.6"
 
   # Development / test dependencies live in the Gemfile.
 

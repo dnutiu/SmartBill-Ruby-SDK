@@ -1,20 +1,31 @@
 # frozen_string_literal: true
 
-require_relative "sdk/version"
-require_relative "sdk/exceptions"
-require_relative "sdk/transport"
-require_relative "sdk/http_adapter"
-require_relative "sdk/models"
-require_relative "sdk/services"
-require_relative "sdk/client"
-
 # smartbill-sdk — Ruby SDK for the SmartBill Cloud REST API.
 #
-# Provides a synchronous {Smartbill::Sdk::Client} with typed request/response
-# models for every endpoint in the SmartBill OpenAPI specification.
+# Provides a synchronous {Client} with typed request/response models for
+# every endpoint in the SmartBill OpenAPI specification.
+#
+# Constants under `Smartbill::Sdk` are autoloaded by Zeitwerk from
+# `lib/smartbill/sdk/` (one file per constant). `require "smartbill/sdk"`
+# sets up the loader; constants are then resolved on first reference.
+
+require "zeitwerk"
+
 module Smartbill
+  # Namespace for the SmartBill SDK.
   module Sdk
-    # SmartBill Cloud REST API base URL.
-    DEFAULT_BASE_URL = Transport::DEFAULT_BASE_URL
   end
 end
+
+loader = Zeitwerk::Loader.new
+loader.push_dir(File.expand_path("sdk", __dir__), namespace: Smartbill::Sdk)
+# `version.rb` defines the `VERSION` constant (not `Version`), and
+# `api_error.rb` defines `APIError` (not `ApiError`).
+loader.inflector.inflect(
+  "version" => "VERSION",
+  "api_error" => "APIError"
+)
+loader.setup
+
+# Public alias for the default SmartBill Cloud REST API base URL.
+Smartbill::Sdk::DEFAULT_BASE_URL = Smartbill::Sdk::Transport::DEFAULT_BASE_URL
