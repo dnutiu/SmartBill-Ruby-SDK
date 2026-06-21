@@ -1,5 +1,7 @@
 # smartbill-sdk
 
+![](./docs/smartbill.jpg)
+
 A Ruby SDK for the [SmartBill Cloud REST API](https://www.facturionline.ro/api-program-facturare/),
 offering a synchronous client with typed request/response models covering
 every endpoint in the official `openapi.json` spec.
